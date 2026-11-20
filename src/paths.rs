@@ -1,5 +1,6 @@
 use crate::config::Field;
-use crate::input::{hold_keys, interruptible_sleep, key_down, key_up, tap_key, Key};
+use crate::input::{interruptible_sleep, key_down, key_up, tap_key, Key};
+use crate::walk::walk_corrected;
 use std::sync::atomic::AtomicBool;
 
 /// NatroMacro's `Walk(tiles)` formula: `4000 / MoveSpeedNum * tiles` ms.
@@ -9,10 +10,9 @@ pub fn walk_ms(tiles: f32, move_speed: f32) -> u64 {
 }
 
 fn nm_walk(tiles: f32, k1: Key, k2: Option<Key>, move_speed: f32, stop_flag: &AtomicBool) -> bool {
-    let ms = walk_ms(tiles, move_speed);
     match k2 {
-        Some(k2) => hold_keys(&[k1, k2], ms, stop_flag),
-        None => hold_keys(&[k1], ms, stop_flag),
+        Some(k2) => walk_corrected(tiles, &[k1, k2], move_speed, stop_flag),
+        None => walk_corrected(tiles, &[k1], move_speed, stop_flag),
     }
 }
 

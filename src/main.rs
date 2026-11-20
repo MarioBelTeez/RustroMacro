@@ -6,6 +6,7 @@ mod input;
 mod paths;
 mod patterns;
 mod runner;
+mod walk;
 
 use config::{Field, MacroConfig, PatternKind};
 use eframe::egui;
