@@ -1,0 +1,4 @@
+/target
+Cargo.lock
+rustro_config.toml
+*.log
