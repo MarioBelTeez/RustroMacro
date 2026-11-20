@@ -7,7 +7,7 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{
     KEYBDINPUT, KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, MAPVK_VK_TO_VSC,
     MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, MOUSEEVENTF_MOVE, MOUSEINPUT, VIRTUAL_KEY, VK_A,
     VK_D, VK_E, VK_ESCAPE, VK_F1, VK_F2, VK_LEFT, VK_OEM_COMMA, VK_OEM_PERIOD, VK_R, VK_RETURN,
-    VK_RIGHT, VK_S, VK_SPACE, VK_W,
+    VK_RIGHT, VK_S, VK_SPACE, VK_W, VK_O, VK_I,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -18,6 +18,8 @@ pub enum Key {
     D,
     E,
     R,
+    O,
+    I,
     Space,
     Escape,
     Return,
@@ -36,6 +38,8 @@ impl Key {
             Key::D => VK_D,
             Key::E => VK_E,
             Key::R => VK_R,
+            Key::O => VK_O,
+            Key::I => VK_I,
             Key::Space => VK_SPACE,
             Key::Escape => VK_ESCAPE,
             Key::Return => VK_RETURN,

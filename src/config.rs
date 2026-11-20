@@ -47,6 +47,7 @@ pub enum PatternKind {
     Squares,
     Snake,
     CornerXSnake,
+    ELol,
     Stationary,
 }
 
@@ -55,6 +56,7 @@ impl PatternKind {
         PatternKind::Squares,
         PatternKind::Snake,
         PatternKind::CornerXSnake,
+        PatternKind::ELol,
         PatternKind::Stationary,
     ];
 
@@ -63,6 +65,7 @@ impl PatternKind {
             PatternKind::Squares => "Squares",
             PatternKind::Snake => "Snake",
             PatternKind::CornerXSnake => "CornerXSnake",
+            PatternKind::ELol => "e_lol",
             PatternKind::Stationary => "Stationary",
         }
     }

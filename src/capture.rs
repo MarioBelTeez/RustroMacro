@@ -119,16 +119,94 @@ pub fn get_pixel(screen_x: i32, screen_y: i32) -> Option<Rgb> {
     }
 }
 
-/// Checks the right side of the top-center BSS backpack bar for the red "full" fill color.
-pub fn is_backpack_full(win: WindowRect) -> bool {
-    // BSS backpack bar sits near top-center (~50% width, ~6% height).
-    // Sample near the right edge of the pollen bar where red appears at ~98-100%.
-    let sample_x = win.x + (win.width as f32 * 0.56) as i32;
-    let sample_y = win.y + (win.height as f32 * 0.06) as i32;
-    if let Some(px) = get_pixel(sample_x, sample_y) {
-        // Reddish bar when full (high R, low G/B)
-        px.r > 195 && px.g < 85 && px.b < 85
+/// Port of NatroMacro's `nm_backpackPercent()` at (windowWidth/2 + 62, 6).
+pub fn backpack_percent(win: WindowRect) -> u8 {
+    let sample_x = win.x + (win.width / 2) + 62;
+    let sample_y = win.y + 6;
+    let Some(px) = get_pixel(sample_x, sample_y) else {
+        return 0;
+    };
+    let gb = ((px.g as u16) << 8) | (px.b as u16);
+
+    if px.r <= 0x69 {
+        if px.r <= 0x4B {
+            if px.r <= 0x42 {
+                if px.r > 0x41 && gb <= 0xFF80 && gb > 0xFC85 { 5 } else { 0 }
+            } else if px.r <= 0x47 {
+                if px.r <= 0x44 && gb <= 0xFE85 && gb > 0xF984 {
+                    10
+                } else if px.r > 0x44 && gb <= 0xFB84 && gb > 0xF582 {
+                    15
+                } else {
+                    0
+                }
+            } else if gb <= 0xF782 && gb > 0xF080 {
+                20
+            } else {
+                0
+            }
+        } else if px.r <= 0x5B {
+            if px.r <= 0x4F && gb <= 0xF280 && gb > 0xEA7D {
+                25
+            } else if px.r <= 0x55 && gb <= 0xEC7D && gb > 0xE37A {
+                30
+            } else if px.r > 0x55 && gb <= 0xE57A && gb > 0xDA76 {
+                35
+            } else {
+                0
+            }
+        } else if px.r <= 0x62 && gb <= 0xDC76 && gb > 0xD072 {
+            40
+        } else if px.r > 0x62 && gb <= 0xD272 && gb > 0xC66D {
+            45
+        } else {
+            0
+        }
+    } else if px.r <= 0x9C {
+        if px.r <= 0x85 {
+            if px.r <= 0x7B {
+                if px.r <= 0x72 && gb <= 0xC86D && gb > 0xBA68 {
+                    50
+                } else if px.r > 0x72 && gb <= 0xBC68 && gb > 0xAD62 {
+                    55
+                } else {
+                    0
+                }
+            } else if gb <= 0xAF62 && gb > 0x9E5C {
+                60
+            } else {
+                0
+            }
+        } else if px.r <= 0x90 && gb <= 0xA05C && gb > 0x8F55 {
+            65
+        } else if px.r > 0x90 && gb <= 0x9155 && gb > 0x7E4E {
+            70
+        } else {
+            0
+        }
+    } else if px.r <= 0xC4 {
+        if px.r <= 0xA9 && gb <= 0x804E && gb > 0x6C46 {
+            75
+        } else if px.r <= 0xB6 && gb <= 0x6E46 && gb > 0x5A3F {
+            80
+        } else if px.r > 0xB6 && gb <= 0x5D3F && gb > 0x4637 {
+            85
+        } else {
+            0
+        }
+    } else if px.r <= 0xD3 && gb <= 0x4A37 && gb > 0x322E {
+        90
+    } else if (px.r == 0xF7 && px.g == 0x00 && px.b == 0x17)
+        || (px.r >= 0xE0 && gb <= 0x2427 && gb > 0x1000)
+    {
+        100
+    } else if gb <= 0x342E {
+        95
     } else {
-        false
+        0
     }
+}
+
+pub fn is_backpack_full(win: WindowRect) -> bool {
+    backpack_percent(win) >= 95
 }
