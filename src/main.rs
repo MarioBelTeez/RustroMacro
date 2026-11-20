@@ -35,12 +35,14 @@ impl eframe::App for RustroApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         ctx.request_repaint_after(std::time::Duration::from_millis(120));
 
-        let (status, cycles, roblox_ok, logs) = {
+        let (status, cycles, roblox_ok, live_speed, live_haste, logs) = {
             let s = self.controller.shared.lock().unwrap();
             (
                 s.status,
                 s.cycles_completed,
                 s.roblox_detected,
+                s.live_speed,
+                s.live_haste,
                 s.logs.iter().cloned().collect::<Vec<_>>(),
             )
         };
@@ -109,7 +111,7 @@ impl eframe::App for RustroApp {
                 }
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label(format!("Cycles: {cycles}"));
+                    ui.label(format!("Cycles: {cycles}  |  Live Speed: {live_speed:.1} (Haste {live_haste}x)"));
                 });
             });
 
@@ -153,7 +155,12 @@ impl eframe::App for RustroApp {
                     ui.end_row();
 
                     ui.label("Move Speed");
-                    ui.add(egui::Slider::new(&mut self.config.move_speed, 16.0..=50.0).step_by(0.5));
+                    ui.add(
+                        egui::DragValue::new(&mut self.config.move_speed)
+                            .speed(0.05)
+                            .range(10.0..=60.0)
+                            .max_decimals(2),
+                    );
                     ui.end_row();
 
                     ui.label("Pattern Size");

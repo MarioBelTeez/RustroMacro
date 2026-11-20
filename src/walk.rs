@@ -152,14 +152,111 @@ fn has_melody_at(buf: &[u8], w: i32, x_start: i32, x_end: i32, y_end: i32) -> bo
     false
 }
 
-/// Detect active speed buffs (Haste / Coconut Haste / Haste+) from the Roblox buff bar.
-pub fn detect_live_movespeed(profile: SpeedProfile) -> f32 {
+const DIGIT_0: &[&str] = &[
+    "..####..", ".#....#.", ".......#", "#......#", "#......#", "#......#", "#......#", ".......#",
+    ".#....#.", "..####..",
+];
+const DIGIT_2: &[&str] = &[
+    ".###", "#...", "....", "....", "....", "...#", "..#.", ".#..", "#...", "####", "####",
+];
+const DIGIT_3: &[&str] = &[
+    ".###", "....", "....", "....", "...#", "....", "....", "....", "#...", ".###",
+];
+const DIGIT_4: &[&str] = &["...#", "....", "..#.", ".#..", "##..", "####"];
+const DIGIT_5: &[&str] = &[
+    "####", "####", "#...", "#...", "####", "....", "....", "....", "....", "....", "####",
+];
+const DIGIT_6: &[&str] = &[
+    "...#", "..#.", ".#..", ".#..", ".###", "##..", "#...", ".#..", "..##",
+];
+const DIGIT_7: &[&str] = &[
+    "####", "####", "....", "....", "....", "....", "....", "....", "....", "...#", "...#", "...#",
+];
+const DIGIT_8: &[&str] = &[
+    "..##", ".#..", ".#..", ".###", "..##", ".#..", "....", "#...", ".#..", "..##",
+];
+const DIGIT_9: &[&str] = &[
+    "..##", ".#..", "#...", ".#..", "..##", "....", "....", "....", "....", "...#",
+];
+
+fn match_digit_template(
+    buf: &[u8],
+    w: i32,
+    tpl: &[&str],
+    rx0: i32,
+    ry0: i32,
+    rx1: i32,
+    ry1: i32,
+) -> bool {
+    let th = tpl.len() as i32;
+    let tw = tpl[0].len() as i32;
+    let x_start = rx0.max(0);
+    let y_start = ry0.max(0);
+    let x_end = (rx1 - tw).min(w - tw);
+    let y_end = (ry1 - th).min(STRIP_H - th);
+    if x_start > x_end || y_start > y_end {
+        return false;
+    }
+
+    for y in y_start..=y_end {
+        for x in x_start..=x_end {
+            let mut ok = true;
+            'check: for (dy, row) in tpl.iter().enumerate() {
+                for (dx, ch) in row.bytes().enumerate() {
+                    if ch == b'#' {
+                        let c = px_at(buf, w, x + dx as i32, y + dy as i32);
+                        // White digit pixel (~#F0F0F0..#FFFFFF)
+                        if c.0 < 210 || c.1 < 210 || c.2 < 210 {
+                            ok = false;
+                            break 'check;
+                        }
+                    }
+                }
+            }
+            if ok {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn detect_haste_stacks(buf: &[u8], w: i32, x1: i32, y1: i32) -> u32 {
+    let rx0 = x1 + 2 * y1 - 44;
+    let ry0 = (y1 - 18).max(0);
+    let rx1 = x1 + 2 * y1 - 14;
+    let ry1 = y1 - 1;
+
+    let checks: [(u32, &[&str]); 9] = [
+        (9, DIGIT_9),
+        (8, DIGIT_8),
+        (7, DIGIT_7),
+        (6, DIGIT_6),
+        (5, DIGIT_5),
+        (4, DIGIT_4),
+        (3, DIGIT_3),
+        (2, DIGIT_2),
+        (10, DIGIT_0),
+    ];
+    for (stacks, tpl) in checks {
+        if match_digit_template(buf, w, tpl, rx0, ry0, rx1, ry1) {
+            return stacks;
+        }
+    }
+    1
+}
+
+/// Detect active speed buffs (Haste 1-10x, Coconut Haste, Haste+) from the Roblox buff bar.
+/// Returns `(effective_speed, haste_stacks, haste_plus, coconut)`.
+pub fn detect_live_movespeed_info(profile: SpeedProfile) -> (f32, u32, bool, bool) {
+    let base_total = profile.base_movespeed * profile.hasty_guard * profile.gifted_hasty;
     let Some((w, buf)) = capture_buff_strip() else {
-        return profile.base_movespeed * profile.hasty_guard * profile.gifted_hasty;
+        return (base_total, 0, false, false);
     };
 
     // 1. Scan for Haste / Coconut Haste (10px wide #F0F0F0 strip at y >= 14, excluding Melody #242424)
     let mut haste_count = 0u32;
+    let mut first_haste = None;
     let mut x = 0i32;
     for _ in 0..3 {
         let mut found = None;
@@ -167,7 +264,7 @@ pub fn detect_live_movespeed(profile: SpeedProfile) -> f32 {
             for sx in x..=(w - 10) {
                 let mut run = true;
                 for dx in 0..10 {
-                    if !color_near(px_at(&buf, w, sx + dx, y), (0xF0, 0xF0, 0xF0), 12) {
+                    if !color_near(px_at(&buf, w, sx + dx, y), (0xF0, 0xF0, 0xF0), 14) {
                         run = false;
                         break;
                     }
@@ -184,12 +281,22 @@ pub fn detect_live_movespeed(profile: SpeedProfile) -> f32 {
         let melody_x_end = fx + (2 * fy - 24).max(16);
         if !has_melody_at(&buf, w, fx + 2, melody_x_end, fy) {
             haste_count += 1;
+            if first_haste.is_none() {
+                first_haste = Some((fx, fy));
+            }
         }
         x = fx + (2 * fy - 14).max(12);
         if x >= w - 10 {
             break;
         }
     }
+
+    let coconut = haste_count >= 2;
+    let haste_stacks = if let Some((x1, y1)) = first_haste {
+        detect_haste_stacks(&buf, w, x1, y1)
+    } else {
+        0
+    };
 
     // 2. Scan for Haste+ (20px wide #EDDB4C strip at y = 25..27)
     let mut haste_plus = false;
@@ -209,17 +316,20 @@ pub fn detect_live_movespeed(profile: SpeedProfile) -> f32 {
         }
     }
 
-    let coconut_bonus = if haste_count >= 2 { 10.0 } else { 0.0 };
-    // Without full OCR on the stack digit, a detected Haste icon gives at least 1 stack (+10%);
-    // Haste+ doubles total speed.
-    let haste_mult = if haste_count >= 1 { 1.1 } else { 1.0 };
+    let coconut_bonus = if coconut { 10.0 } else { 0.0 };
+    let haste_mult = 1.0 + (haste_stacks as f32) * 0.1;
     let hp_mult = if haste_plus { 2.0 } else { 1.0 };
 
-    (profile.base_movespeed + coconut_bonus)
+    let speed = (profile.base_movespeed + coconut_bonus)
         * profile.hasty_guard
         * profile.gifted_hasty
         * haste_mult
-        * hp_mult
+        * hp_mult;
+    (speed, haste_stacks, haste_plus, coconut)
+}
+
+pub fn detect_live_movespeed(profile: SpeedProfile) -> f32 {
+    detect_live_movespeed_info(profile).0
 }
 
 /// NatroMacro `Walk(n)` with live movespeed integration (4 studs per tile).

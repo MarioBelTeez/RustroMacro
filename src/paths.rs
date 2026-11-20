@@ -220,7 +220,7 @@ pub fn travel_to_field(field: Field, hive_slot: u8, move_speed: f32, stop_flag: 
                 && interruptible_sleep(2000, stop_flag)
         }
         Field::Pepper => {
-            // gtf-pepper.ahk (Walk from ramp)
+            // gtf-pepper.ahk (Walk from ramp — every segment speed-corrected)
             key_down(Key::Space);
             key_down(Key::D);
             if !interruptible_sleep(100, stop_flag) {
@@ -229,22 +229,15 @@ pub fn travel_to_field(field: Field, hive_slot: u8, move_speed: f32, stop_flag: 
                 return false;
             }
             key_up(Key::Space);
-            if !interruptible_sleep(walk_ms(2.0, move_speed), stop_flag) {
-                key_up(Key::D);
+            if !walk_corrected(2.0, &[Key::D], move_speed, stop_flag) {
                 return false;
             }
-            key_down(Key::W);
-            if !interruptible_sleep(walk_ms(1.8, move_speed), stop_flag) {
-                key_up(Key::W);
-                key_up(Key::D);
+            if !walk_corrected(1.8, &[Key::D, Key::W], move_speed, stop_flag) {
                 return false;
             }
-            key_up(Key::W);
-            if !interruptible_sleep(walk_ms(30.0, move_speed), stop_flag) {
-                key_up(Key::D);
+            if !walk_corrected(30.0, &[Key::D], move_speed, stop_flag) {
                 return false;
             }
-            key_up(Key::D);
             if !tap_key(Key::Space, 300, stop_flag) {
                 return false;
             }
@@ -258,42 +251,47 @@ pub fn travel_to_field(field: Field, hive_slot: u8, move_speed: f32, stop_flag: 
             {
                 return false;
             }
-            key_down(Key::W);
-            key_down(Key::D);
-            if !interruptible_sleep(walk_ms(11.0, move_speed), stop_flag) {
-                key_up(Key::W);
-                key_up(Key::D);
+            if !walk_corrected(11.0, &[Key::W, Key::D], move_speed, stop_flag) {
                 return false;
             }
-            key_up(Key::D);
+            key_down(Key::W);
             if !tap_key(Key::Space, 200, stop_flag)
                 || !interruptible_sleep(1100, stop_flag)
                 || !tap_key(Key::Space, 200, stop_flag)
-                || !interruptible_sleep(walk_ms(18.0, move_speed), stop_flag)
-                || !tap_key(Key::Space, 200, stop_flag)
-                || !interruptible_sleep(walk_ms(20.0, move_speed), stop_flag)
+                || !walk_corrected(18.0, &[Key::W], move_speed, stop_flag)
             {
                 key_up(Key::W);
+                return false;
+            }
+            key_down(Key::W);
+            if !tap_key(Key::Space, 200, stop_flag)
+                || !walk_corrected(20.0, &[Key::W], move_speed, stop_flag)
+            {
+                key_up(Key::W);
+                return false;
+            }
+            if !walk_corrected(9.0, &[Key::W, Key::D], move_speed, stop_flag) {
+                return false;
+            }
+            key_down(Key::W);
+            key_down(Key::D);
+            if !tap_key(Key::Space, 300, stop_flag)
+                || !walk_corrected(1.0, &[Key::W, Key::D], move_speed, stop_flag)
+            {
+                key_up(Key::W);
+                key_up(Key::D);
+                return false;
+            }
+            if !walk_corrected(33.0, &[Key::D], move_speed, stop_flag) {
                 return false;
             }
             key_down(Key::D);
-            if !interruptible_sleep(walk_ms(9.0, move_speed), stop_flag)
-                || !tap_key(Key::Space, 300, stop_flag)
-                || !interruptible_sleep(walk_ms(1.0, move_speed), stop_flag)
-            {
-                key_up(Key::W);
-                key_up(Key::D);
-                return false;
-            }
-            key_up(Key::W);
-            if !interruptible_sleep(walk_ms(33.0, move_speed), stop_flag)
-                || !tap_key(Key::Space, 300, stop_flag)
-                || !interruptible_sleep(walk_ms(4.0, move_speed), stop_flag)
+            if !tap_key(Key::Space, 300, stop_flag)
+                || !walk_corrected(4.0, &[Key::D], move_speed, stop_flag)
             {
                 key_up(Key::D);
                 return false;
             }
-            key_up(Key::D);
             send_repeat(Key::Period, 2, stop_flag)
                 && nm_walk(9.0, Key::W, None, move_speed, stop_flag)
                 && nm_walk(1.5, Key::D, None, move_speed, stop_flag)

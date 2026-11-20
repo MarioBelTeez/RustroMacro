@@ -35,6 +35,8 @@ pub struct SharedState {
     pub logs: VecDeque<String>,
     pub cycles_completed: u32,
     pub roblox_detected: bool,
+    pub live_speed: f32,
+    pub live_haste: u32,
 }
 
 impl SharedState {
@@ -46,6 +48,8 @@ impl SharedState {
             logs,
             cycles_completed: 0,
             roblox_detected: false,
+            live_speed: 28.0,
+            live_haste: 0,
         }
     }
 
@@ -126,8 +130,14 @@ impl MacroController {
 
                 if tick % 10 == 0 {
                     let detected = find_roblox_window().is_some();
+                    let ms_cfg = hk_config.lock().map(|c| c.move_speed).unwrap_or(28.0);
+                    let (spd, haste, _, _) = crate::walk::detect_live_movespeed_info(
+                        crate::walk::SpeedProfile::from_configured(ms_cfg),
+                    );
                     if let Ok(mut s) = hk_shared.lock() {
                         s.roblox_detected = detected;
+                        s.live_speed = spd;
+                        s.live_haste = haste;
                     }
                 }
                 tick = tick.wrapping_add(1);
